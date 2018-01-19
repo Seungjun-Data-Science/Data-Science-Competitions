@@ -1,3 +1,3 @@
 # Data Science Competitions and Projects
 
-Mainly used Python's machine learning lib, scikit-learn to draw new insights, predict values and improve products or services
+Code(EDA, Prediction made with machine learning etc.) for Data Science Competitions hosted on various platforms including Kaggle, Analytics Vidhya, DrivenData etc.
