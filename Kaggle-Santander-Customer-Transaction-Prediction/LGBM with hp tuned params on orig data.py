@@ -1,0 +1,33 @@
+import numpy as np
+import pandas as pd
+import lightgbm as lgb
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import StratifiedKFold
+
+train_df = pd.read_csv('../input/train.csv')
+test_df = pd.read_csv('../input/test.csv')
+features = [c for c in train_df.columns if c not in ['ID_code', 'target']] #basic features
+target = train_df['target']
+
+param = {'bagging_fraction': 0.6, 'bagging_freq': 5, 'boost_from_average': 'false', 'feature_fraction': 0.04, 
+ 'learning_rate': 0.01, 'max_depth': -1, 'metric': 'auc', 'min_data_in_leaf': 100, 'min_sum_hessian_in_leaf': 10.0, 
+ 'num_leaves': 26, 'num_threads': 8, 'objective': 'binary', 'reg_alpha': 0.1302650970728192, 
+ 'reg_lambda': 0.3603427518866501, 'tree_learner': 'serial', 'verbosity': 1}
+
+folds = StratifiedKFold(n_splits=5, shuffle=False, random_state=42)
+oof = np.zeros(len(train_df))
+predictions = np.zeros(len(test_df))
+
+for fold_, (trn_idx, val_idx) in enumerate(folds.split(train_df.values, target.values)):
+    print("Fold {}".format(fold_))
+    trn_data = lgb.Dataset(train_df.iloc[trn_idx][features], label=target.iloc[trn_idx])
+    val_data = lgb.Dataset(train_df.iloc[val_idx][features], label=target.iloc[val_idx])
+    clf = lgb.train(param, trn_data, 40000, valid_sets = [trn_data, val_data], verbose_eval=1000, early_stopping_rounds = 1000)
+    oof[val_idx] = clf.predict(train_df.iloc[val_idx][features], num_iteration=clf.best_iteration)
+    predictions += clf.predict(test_df[features], num_iteration=clf.best_iteration) / folds.n_splits
+    
+print("CV score: {:<8.5f}".format(roc_auc_score(target, oof)))
+
+sub = pd.DataFrame({"ID_code": test_df.ID_code.values})
+sub["target"] = predictions
+sub.to_csv("LGBM_baseline_on_non_fe_orig_data.csv", index=False)
